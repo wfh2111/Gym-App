@@ -359,7 +359,7 @@ model WorkoutSet {
   isWarmup     Boolean    @default(false)
   completedAt  DateTime?
 
-  @@index([workoutLogId])
+  @@unique([workoutLogId, exerciseName, setIndex])
   @@index([exerciseName])
 }
 
