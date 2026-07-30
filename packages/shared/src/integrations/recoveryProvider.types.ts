@@ -15,8 +15,10 @@ export interface TokenSet {
  */
 export interface RecoveryProvider {
   id: WearableProvider;
-  getAuthUrl?(state: string): string;
-  exchangeCodeForToken?(code: string): Promise<TokenSet>;
+  /** Async because Garmin's OAuth 1.0a flow needs a signed request-token call before it has a
+   *  URL to send the user to; Whoop/Oura (OAuth2) can just build the string synchronously. */
+  getAuthUrl?(state: string): string | Promise<string>;
+  exchangeCodeForToken?(code: string, extra?: Record<string, string>): Promise<TokenSet>;
   refreshAccessToken?(refreshToken: string): Promise<TokenSet>;
-  fetchRecoveryData(params: { accessToken: string; since: Date }): Promise<NormalizedRecoveryDatum[]>;
+  fetchRecoveryData(params: { accessToken: string; since: Date; tokenSecret?: string }): Promise<NormalizedRecoveryDatum[]>;
 }

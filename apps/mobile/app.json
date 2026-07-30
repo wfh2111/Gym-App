@@ -34,7 +34,15 @@
         {
           "backgroundColor": "#FAFAF8"
         }
-      ]
+      ],
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Gym App reads sleep, heart rate variability, and resting heart rate to inform your recovery score.",
+          "healthUpdatePermission": "Gym App does not write any data back to Health."
+        }
+      ],
+      "react-native-google-fit"
     ],
     "extra": {
       "router": {}
