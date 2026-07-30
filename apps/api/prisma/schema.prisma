@@ -1,0 +1,437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums (kept in sync with packages/shared/src/schemas/enums.ts) ----------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Goal {
+  FAT_LOSS
+  MUSCLE_GAIN
+  RECOMP
+  PERFORMANCE
+  GENERAL_HEALTH
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum EquipmentAccess {
+  FULL_GYM
+  HOME_GYM
+  MINIMAL_EQUIPMENT
+  BODYWEIGHT_ONLY
+}
+
+enum DietPattern {
+  OMNIVORE
+  VEGETARIAN
+  VEGAN
+  PESCATARIAN
+  KETO
+  OTHER
+}
+
+enum SupplementOpenness {
+  NONE
+  OPEN_BASIC
+  OPEN_ADVANCED
+}
+
+enum PlanStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum NutritionSource {
+  TEXT
+  PHOTO
+  BARCODE
+  MANUAL
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+enum RecoverySource {
+  MANUAL
+  APPLE_HEALTH
+  GOOGLE_FIT
+  WHOOP
+  OURA
+  GARMIN
+}
+
+enum WearableProvider {
+  WHOOP
+  OURA
+  GARMIN
+  APPLE_HEALTH
+  GOOGLE_FIT
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  EXPIRED
+  REVOKED
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  EXPIRED
+  CANCELED
+  GRACE_PERIOD
+  NONE
+}
+
+enum ConversationType {
+  ONBOARDING
+  COACH
+  WEEKLY_CHECKIN
+}
+
+enum ConversationStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum SupplementCategory {
+  PROTEIN
+  CREATINE
+  VITAMIN_D
+  OMEGA3
+  MAGNESIUM
+  CAFFEINE
+  MULTIVITAMIN
+  ELECTROLYTES
+  OTHER
+}
+
+// ---------- Models ----------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(USER)
+  timezone     String   @default("UTC")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile             Profile?
+  planVersions        PlanVersion[]
+  nutritionLogs       NutritionLog[]
+  workoutLogs         WorkoutLog[]
+  recoveryData        RecoveryData[]
+  wearableConnections WearableConnection[]
+  subscription        Subscription?
+  conversations       Conversation[]
+  coachMessageUsage   CoachMessageUsage[]
+  adherenceSnapshots  AdherenceSnapshot[]
+}
+
+model Profile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goal                    Goal?
+  experienceLevel         ExperienceLevel?
+  trainingHistoryNotes    String?
+  daysPerWeek             Int?
+  sessionDurationMinutes  Int?
+  equipmentAccess         EquipmentAccess?
+  dietPattern             DietPattern?
+  dietaryRestrictions     String[]
+  allergies               String[]
+  heightCm                Float?
+  currentWeightKg         Float?
+  targetWeightKg          Float?
+  sex                     String?
+  birthYear               Int?
+  activityLevel           String?
+  sleepHoursAvg           Float?
+  sleepQualityNotes       String?
+  injuries                Json?
+  supplementOpenness      SupplementOpenness?
+  rawOnboardingTranscript Json?
+  onboardingCompletedAt   DateTime?
+  updatedAt               DateTime  @updatedAt
+}
+
+model Conversation {
+  id          String              @id @default(cuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        ConversationType
+  status      ConversationStatus  @default(ACTIVE)
+  startedAt   DateTime            @default(now())
+  completedAt DateTime?
+  messages    CoachMessage[]
+
+  @@index([userId, type])
+}
+
+model CoachMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  toolCalls      Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model PlanVersion {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  status        PlanStatus @default(DRAFT)
+  weekStartDate DateTime
+  rationale     String?
+  sourceModel   String?
+  generatedAt   DateTime   @default(now())
+
+  nutritionTarget       NutritionTarget?
+  trainingProgram       TrainingProgram?
+  recoveryProtocol      RecoveryProtocol?
+  supplementSuggestions SupplementSuggestion[]
+  workoutLogs           WorkoutLog[]
+
+  @@unique([userId, versionNumber])
+  @@index([userId, status])
+}
+
+model NutritionTarget {
+  id              String      @id @default(cuid())
+  planVersionId   String      @unique
+  planVersion     PlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  calories        Int
+  proteinG        Int
+  carbsG          Int
+  fatG            Int
+  mealsPerDay     Int
+  mealTimingNotes String?
+}
+
+model TrainingProgram {
+  id            String        @id @default(cuid())
+  planVersionId String        @unique
+  planVersion   PlanVersion   @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  splitType     String
+  notes         String?
+  days          TrainingDay[]
+}
+
+model TrainingDay {
+  id        String              @id @default(cuid())
+  programId String
+  program   TrainingProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  dayIndex  Int
+  label     String
+  focus     String?
+  isRestDay Boolean             @default(false)
+  exercises PrescribedExercise[]
+  workoutLogs WorkoutLog[]
+
+  @@index([programId, dayIndex])
+}
+
+model PrescribedExercise {
+  id                String           @id @default(cuid())
+  trainingDayId     String
+  trainingDay       TrainingDay      @relation(fields: [trainingDayId], references: [id], onDelete: Cascade)
+  order             Int
+  exerciseName      String
+  exerciseCatalogId String?
+  exerciseCatalog   ExerciseCatalog? @relation(fields: [exerciseCatalogId], references: [id])
+  targetSets        Int
+  targetRepLow      Int
+  targetRepHigh     Int
+  targetRIR         Int?
+  restSeconds       Int?
+  progressionRule   Json?
+
+  @@index([trainingDayId, order])
+}
+
+model ExerciseCatalog {
+  id            String                @id @default(cuid())
+  name          String                @unique
+  primaryMuscle String
+  equipment     String
+  prescriptions PrescribedExercise[]
+}
+
+model RecoveryProtocol {
+  id                   String      @id @default(cuid())
+  planVersionId        String      @unique
+  planVersion          PlanVersion @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  sleepTargetHours     Float
+  deloadCadenceWeeks   Int
+  mobilityRoutineNotes String?
+}
+
+model SupplementSuggestion {
+  id            String             @id @default(cuid())
+  planVersionId String
+  planVersion   PlanVersion        @relation(fields: [planVersionId], references: [id], onDelete: Cascade)
+  category      SupplementCategory
+  rationale     String
+  disclaimer    String             @default("General information only, not medical advice. Consult a qualified healthcare provider before starting any supplement, especially if you take medication or have a medical condition.")
+}
+
+model NutritionLog {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loggedAt    DateTime        @default(now())
+  mealType    MealType
+  source      NutritionSource
+  description String
+  calories    Int
+  proteinG    Int
+  carbsG      Int
+  fatG        Int
+  confidence  Float?
+  rawInput    Json?
+
+  @@index([userId, loggedAt])
+}
+
+model WorkoutLog {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planVersionId String?
+  planVersion   PlanVersion? @relation(fields: [planVersionId], references: [id], onDelete: SetNull)
+  trainingDayId String?
+  trainingDay   TrainingDay? @relation(fields: [trainingDayId], references: [id], onDelete: SetNull)
+  startedAt     DateTime     @default(now())
+  completedAt   DateTime?
+  notes         String?
+  sets          WorkoutSet[]
+
+  @@index([userId, startedAt])
+}
+
+model WorkoutSet {
+  id           String     @id @default(cuid())
+  workoutLogId String
+  workoutLog   WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
+  exerciseName String
+  setIndex     Int
+  weightKg     Float?
+  reps         Int?
+  rpe          Float?
+  isWarmup     Boolean    @default(false)
+  completedAt  DateTime?
+
+  @@index([workoutLogId])
+  @@index([exerciseName])
+}
+
+model RecoveryData {
+  id                String         @id @default(cuid())
+  userId            String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date              DateTime
+  source            RecoverySource
+  sleepHours        Float?
+  sleepQualityScore Float?
+  hrvMs             Float?
+  restingHeartRate  Float?
+  recoveryScore     Float?
+  rawPayload        Json?
+
+  @@unique([userId, date, source])
+  @@index([userId, date])
+}
+
+model WearableConnection {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       WearableProvider
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  externalUserId String?
+  status         ConnectionStatus  @default(CONNECTED)
+  connectedAt    DateTime          @default(now())
+
+  @@unique([userId, provider])
+}
+
+model Subscription {
+  id                  String             @id @default(cuid())
+  userId              String             @unique
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider            String             @default("revenuecat")
+  revenueCatAppUserId String?
+  productId           String?
+  entitlementId       String?
+  tier                SubscriptionTier   @default(FREE)
+  status              SubscriptionStatus @default(NONE)
+  isAnnual            Boolean            @default(false)
+  currentPeriodEnd    DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+}
+
+model CoachMessageUsage {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartDate DateTime
+  messageCount  Int      @default(0)
+
+  @@unique([userId, weekStartDate])
+}
+
+model AdherenceSnapshot {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartDate     DateTime
+  nutritionLogDays  Int
+  workoutsCompleted Int
+  workoutsPlanned   Int
+  avgRecoveryScore  Float?
+  adherencePercent  Float
+  computedAt        DateTime @default(now())
+
+  @@unique([userId, weekStartDate])
+}

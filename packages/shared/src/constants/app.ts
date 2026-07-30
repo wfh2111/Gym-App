@@ -1,0 +1,8 @@
+export const DEFAULT_FREE_COACH_MESSAGES_PER_WEEK = 10;
+export const DEFAULT_PROGRESSION_INCREMENT_KG = 2.5;
+export const DEFAULT_DELOAD_CADENCE_WEEKS = 6;
+export const MIN_LOGGED_DAYS_BEFORE_REGEN = 3;
+
+export const APP_NAME = 'Gym App';
+
+export const COACH_TIP_MAX_LENGTH = 160;

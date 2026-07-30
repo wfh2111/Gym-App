@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Gym App",
+    "slug": "gym-app",
+    "version": "0.1.0",
+    "scheme": "gymapp",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.gymapp.mobile"
+    },
+    "android": {
+      "package": "com.gymapp.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#FAFAF8"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Gym App uses the camera to log meals by photo and to scan barcodes."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAFAF8"
+        }
+      ]
+    ],
+    "extra": {
+      "router": {}
+    }
+  }
+}
