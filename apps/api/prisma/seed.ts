@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { startOfDay, startOfWeek } from '../src/lib/date';
 
 const prisma = new PrismaClient();
 
@@ -242,20 +243,6 @@ async function main() {
 
   console.log('Seed complete.');
   console.log(`Login with: ${demoEmail} / ${demoPassword}`);
-}
-
-function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function startOfWeek(date: Date): Date {
-  const d = startOfDay(date);
-  const day = d.getDay();
-  const diff = (day + 6) % 7; // Monday as start of week
-  d.setDate(d.getDate() - diff);
-  return d;
 }
 
 function atTime(date: Date, hour: number): Date {

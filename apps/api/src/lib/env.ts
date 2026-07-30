@@ -8,6 +8,8 @@ const EnvSchema = z.object({
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
 
   ANTHROPIC_API_KEY: z.string().optional().default(''),
+  ANTHROPIC_CHAT_MODEL: z.string().optional().default('claude-opus-5'),
+  ANTHROPIC_EXTRACTION_MODEL: z.string().optional().default('claude-opus-5'),
 
   FREE_COACH_MESSAGES_PER_WEEK: z.coerce.number().int().default(10),
   ENABLE_CRON: z
