@@ -4,59 +4,18 @@ import {
   StartWorkoutInputSchema,
   LogSetInputSchema,
   CompleteWorkoutInputSchema,
-  type ProgressionRule,
-  type TodayTrainingDayDTO,
   type WorkoutLogDTO,
   type WorkoutSetDTO,
 } from '@gym-app/shared';
 import { authenticate } from '../middleware/authenticate';
 import { prisma } from '../lib/prisma';
-import { dayIndexForDate } from '../lib/date';
-import { computeProgressionForDay } from '../services/progression.service';
+import { getTodayTrainingDay } from '../services/training.service';
 
 export async function trainingRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('preHandler', authenticate);
 
   app.get('/today', async (request, reply) => {
-    const userId = request.user.sub;
-
-    const plan = await prisma.planVersion.findFirst({
-      where: { userId, status: 'ACTIVE' },
-      include: {
-        trainingProgram: {
-          include: { days: { include: { exercises: { orderBy: { order: 'asc' } } } } },
-        },
-      },
-    });
-
-    const day = plan?.trainingProgram?.days.find((d) => d.dayIndex === dayIndexForDate(new Date()));
-    if (!day) return reply.send(null);
-
-    const suggestions = await computeProgressionForDay(userId, day.exercises);
-
-    const activeLog = await prisma.workoutLog.findFirst({
-      where: { userId, trainingDayId: day.id, completedAt: null },
-      orderBy: { startedAt: 'desc' },
-    });
-
-    const dto: TodayTrainingDayDTO = {
-      trainingDayId: day.id,
-      label: day.label,
-      focus: day.focus ?? null,
-      isRestDay: day.isRestDay,
-      activeWorkoutLogId: activeLog?.id ?? null,
-      exercises: day.exercises.map((ex) => ({
-        order: ex.order,
-        exerciseName: ex.exerciseName,
-        targetSets: ex.targetSets,
-        targetRepLow: ex.targetRepLow,
-        targetRepHigh: ex.targetRepHigh,
-        targetRIR: ex.targetRIR ?? undefined,
-        restSeconds: ex.restSeconds ?? undefined,
-        progressionRule: (ex.progressionRule as ProgressionRule | null) ?? undefined,
-        suggestion: suggestions.get(ex.exerciseName),
-      })),
-    };
+    const dto = await getTodayTrainingDay(request.user.sub);
     return reply.send(dto);
   });
 

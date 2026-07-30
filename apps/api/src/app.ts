@@ -5,6 +5,7 @@ import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import { env } from './lib/env';
 import { authRoutes } from './routes/auth.routes';
+import { todayRoutes } from './routes/today.routes';
 import { onboardingRoutes } from './routes/onboarding.routes';
 import { profileRoutes } from './routes/profile.routes';
 import { plansRoutes } from './routes/plans.routes';
@@ -33,6 +34,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.get('/health', async () => ({ status: 'ok', time: new Date().toISOString() }));
 
   await app.register(authRoutes, { prefix: '/api/auth' });
+  await app.register(todayRoutes, { prefix: '/api/today' });
   await app.register(onboardingRoutes, { prefix: '/api/onboarding' });
   await app.register(profileRoutes, { prefix: '/api/profile' });
   await app.register(plansRoutes, { prefix: '/api/plans' });

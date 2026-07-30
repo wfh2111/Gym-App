@@ -6,6 +6,7 @@ export * from './schemas/recovery';
 export * from './schemas/auth';
 export * from './schemas/training';
 export * from './schemas/coach';
+export * from './schemas/progress';
 
 export * from './integrations/recoveryProvider.types';
 

@@ -157,6 +157,7 @@ model User {
   conversations       Conversation[]
   coachMessageUsage   CoachMessageUsage[]
   adherenceSnapshots  AdherenceSnapshot[]
+  bodyMetricLogs      BodyMetricLog[]
 }
 
 model Profile {
@@ -434,4 +435,15 @@ model AdherenceSnapshot {
   computedAt        DateTime @default(now())
 
   @@unique([userId, weekStartDate])
+}
+
+model BodyMetricLog {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date     DateTime
+  weightKg Float
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
