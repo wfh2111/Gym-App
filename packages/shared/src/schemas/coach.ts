@@ -18,3 +18,17 @@ export const NotePlanAdjustmentRequestToolSchema = z.object({
   category: z.enum(['nutrition', 'training', 'recovery', 'supplements']),
 });
 export type NotePlanAdjustmentRequestToolInput = z.infer<typeof NotePlanAdjustmentRequestToolSchema>;
+
+/** Forced tool-use schema for the weekly re-assessment conversation. Mirrors the onboarding
+ *  extraction pattern: re-emit everything learned this session each turn. */
+export const WeeklyCheckinToolSchema = z.object({
+  trainingFeedback: z.string().optional().describe('How training felt this week - energy, difficulty, any pain.'),
+  nutritionFeedback: z.string().optional().describe('How nutrition adherence felt this week.'),
+  sleepUpdate: z.string().optional().describe('Any changes to sleep or recovery.'),
+  newConstraints: z.string().optional().describe('Any new injuries, schedule changes, or constraints.'),
+  isComplete: z
+    .boolean()
+    .describe("True once enough has been gathered across training, nutrition, sleep, and constraints to inform next week's plan."),
+  followUpQuestion: z.string().optional().describe('The single next question to ask if not complete.'),
+});
+export type WeeklyCheckinToolInput = z.infer<typeof WeeklyCheckinToolSchema>;
