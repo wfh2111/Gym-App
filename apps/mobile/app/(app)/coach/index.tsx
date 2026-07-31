@@ -7,6 +7,7 @@ import { Screen } from '@/components/Screen';
 import { ChatBubble } from '@/components/ChatBubble';
 import { ChatInput } from '@/components/ChatInput';
 import { Text } from '@/components/Text';
+import { Button } from '@/components/Button';
 import { useTheme } from '@/theme/ThemeProvider';
 import { api, ApiError } from '@/lib/api';
 
@@ -23,6 +24,7 @@ export default function CoachScreen() {
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   const listRef = useRef<FlatList<CoachMessageDTO>>(null);
   const seededRef = useRef(false);
 
@@ -49,6 +51,7 @@ export default function CoachScreen() {
 
   async function handleSend(text: string) {
     setError(null);
+    setLimitReached(false);
     setSending(true);
     setMessages((prev) => [
       ...prev,
@@ -66,9 +69,14 @@ export default function CoachScreen() {
         { id: `reply-${Date.now()}`, role: 'ASSISTANT', content: result.reply, createdAt: new Date().toISOString() },
       ]);
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Could not reach the coach. Check your connection and try again.',
-      );
+      if (err instanceof ApiError && err.status === 402) {
+        setLimitReached(true);
+        setError(err.message);
+      } else {
+        setError(
+          err instanceof ApiError ? err.message : 'Could not reach the coach. Check your connection and try again.',
+        );
+      }
     } finally {
       setSending(false);
     }
@@ -119,11 +127,14 @@ export default function CoachScreen() {
         />
 
         {error && (
-          <Text color="danger" style={{ paddingHorizontal: spacing.l24, paddingBottom: spacing.s8 }}>
-            {error}
-          </Text>
+          <View style={{ paddingHorizontal: spacing.l24, paddingBottom: spacing.s8, gap: spacing.s8 }}>
+            <Text color="danger">{error}</Text>
+            {limitReached && (
+              <Button label="Upgrade to Premium" variant="secondary" onPress={() => router.push('/paywall')} />
+            )}
+          </View>
         )}
-        <ChatInput onSend={handleSend} loading={sending} placeholder="Ask your coach..." />
+        {!limitReached && <ChatInput onSend={handleSend} loading={sending} placeholder="Ask your coach..." />}
       </KeyboardAvoidingView>
     </Screen>
   );

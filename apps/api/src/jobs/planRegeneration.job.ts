@@ -4,6 +4,8 @@ import { persistWeeklyAdherenceSnapshot } from '../services/adherence.service';
 import { generatePlan } from '../services/llm/planGeneration.service';
 import { syncAllConnections } from './recoverySync.job';
 
+const PREMIUM_ACCESS_STATUSES: ('ACTIVE' | 'TRIALING' | 'GRACE_PERIOD')[] = ['ACTIVE', 'TRIALING', 'GRACE_PERIOD'];
+
 export interface PlanRegenerationResult {
   usersProcessed: number;
   usersFailed: number;
@@ -18,7 +20,7 @@ export async function regenerateAllPlans(): Promise<PlanRegenerationResult> {
   await syncAllConnections();
 
   const subscriptions = await prisma.subscription.findMany({
-    where: { tier: 'PREMIUM', status: 'ACTIVE' },
+    where: { tier: 'PREMIUM', status: { in: PREMIUM_ACCESS_STATUSES } },
     select: { userId: true },
   });
 

@@ -6,6 +6,7 @@ import { prisma } from '../../lib/prisma';
 import { env } from '../../lib/env';
 import { startOfWeek } from '../../lib/date';
 import { computeWeeklyAdherence } from '../adherence.service';
+import { hasPremiumAccess } from '../billing.service';
 import { CHAT_MODEL, EXTRACTION_MODEL } from './anthropic.client';
 import { callChat, callWithForcedTool } from './toolCall';
 import { generatePlan } from './planGeneration.service';
@@ -33,7 +34,7 @@ const COACH_SYSTEM_PROMPT = `You are the ongoing coach for Gym App. Answer the u
 
 async function assertCanSendCoachMessage(userId: string): Promise<void> {
   const subscription = await prisma.subscription.findUnique({ where: { userId } });
-  if (subscription?.tier === 'PREMIUM' && subscription.status === 'ACTIVE') return;
+  if (hasPremiumAccess(subscription)) return;
 
   const weekStart = startOfWeek(new Date());
   const usage = await prisma.coachMessageUsage.findUnique({
