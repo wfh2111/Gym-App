@@ -12,6 +12,9 @@ apps/mobile/.expo/
 apps/mobile/web-build/
 apps/mobile/dist/
 
+# built web export served by the API in production (see Dockerfile)
+apps/api/public/
+
 # env
 .env
 .env.local

@@ -59,6 +59,40 @@ via Expo Go, set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env` to your machine's L
 The seed script creates `demo@gymapp.dev` / `password123` with a completed onboarding, an active
 plan, and some logged history, so you can explore the app without going through onboarding first.
 
+## Deploying to a public URL
+
+The root `Dockerfile` builds a single deployable service: the Fastify API, plus the Expo Router
+web app exported as static files and served by that same API (see `registerWebApp` in
+`apps/api/src/app.ts`). One image, one process, one URL - no separate static host, no CORS setup
+needed since everything is same-origin. Native (iOS/Android) builds aren't part of this image;
+this is the web + API deployment target.
+
+**[Railway](https://railway.app)** is the easiest fit, since one project can host both this
+service and a Postgres database:
+
+1. Create a new Railway project, add a **Postgres** database to it (Railway provisions
+   `DATABASE_URL` automatically and injects it into other services in the same project).
+2. Add a second service from this GitHub repo/branch. Railway auto-detects the root `Dockerfile`
+   (a `railway.json` is included to pin the healthcheck to `/health`).
+3. Set these variables on the service (Postgres's `DATABASE_URL` is already there if you
+   reference it from the Postgres plugin, e.g. `${{Postgres.DATABASE_URL}}`):
+   - `JWT_SECRET` - any long random string
+   - `NODE_ENV=production`
+   - Optionally `ANTHROPIC_API_KEY` to get real LLM output instead of graceful 503s (see Known
+     limitations)
+   - Optionally the `WHOOP_*` / `OURA_*` / `GARMIN_*` / `REVENUECAT_*` vars from
+     `apps/api/.env.example` if you have real credentials for those
+4. Deploy. The container runs `prisma migrate deploy` on every start (safe - it's a no-op once
+   the schema is current) before starting the server, so the database schema is created
+   automatically on first deploy.
+5. Seed the exercise catalog and demo account once, from a shell attached to the running service
+   (the "Shell" tab in Railway's dashboard, or `railway run` locally with the Railway CLI linked
+   to the project): `npx tsx prisma/seed.ts` from the service's working directory (`apps/api`).
+6. Open the URL Railway gives the service - that's the whole app, in a browser, from anywhere.
+
+Billing defaults to sandbox/mock mode in this build (no `REVENUECAT_*` vars set), so the paywall
+is fully clickable but nothing is charged - see Known limitations below.
+
 ## Scripts
 
 | Command | What it does |
@@ -148,9 +182,18 @@ this was built in a sandboxed environment without real credentials for any of th
   network egress policy blocks `world.openfoodfacts.org`, so it couldn't be exercised end-to-end
   here. It works against a normal internet connection.
 
-Two bugs unrelated to any specific feature were found and fixed while doing real end-to-end
-verification (live browser sessions, not just typecheck) of the above: the mobile API client sent
-`Content-Type: application/json` on every request, which Fastify rejects on bodyless POST/DELETE
-calls, and `@babel/runtime` wasn't hoisted into the mobile workspace under pnpm's strict linking,
-which broke every real Metro bundle. Both are fixed at the root cause (`apps/mobile/src/lib/api.ts`
-and `apps/mobile/package.json` respectively), not worked around per call site.
+Three bugs unrelated to any specific feature were found and fixed while doing real end-to-end
+verification (live browser sessions and an actual production build/run, not just typecheck) of the
+above:
+
+- The mobile API client sent `Content-Type: application/json` on every request, which Fastify
+  rejects on bodyless POST/DELETE calls.
+- `@babel/runtime` wasn't hoisted into the mobile workspace under pnpm's strict linking, which
+  broke every real Metro bundle.
+- The documented production build (`pnpm build && pnpm start`) had never actually been run before
+  this - esbuild's ESM output doesn't shim `require`/`__dirname` for bundled CJS dependencies that
+  need them (Fastify's `avvio`, `node-cron`), so the bundled server crashed immediately on
+  startup.
+
+All three are fixed at the root cause (`apps/mobile/src/lib/api.ts`, `apps/mobile/package.json`,
+and the `build` script in `apps/api/package.json` respectively), not worked around per call site.

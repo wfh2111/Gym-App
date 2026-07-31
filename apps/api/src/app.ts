@@ -1,8 +1,12 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
 import { env } from './lib/env';
 import { authRoutes } from './routes/auth.routes';
 import { todayRoutes } from './routes/today.routes';
@@ -47,6 +51,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(billingRoutes, { prefix: '/api/billing' });
   await app.register(adminRoutes, { prefix: '/api/admin' });
 
+  await registerWebApp(app);
+
   app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error(error);
     const statusCode = error.statusCode ?? 500;
@@ -57,4 +63,37 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   return app;
+}
+
+/**
+ * Serves the Expo Router static web export (built into apps/api/public by the Docker build - see
+ * the root Dockerfile) so a single deployed service handles both the API and the web app. Only
+ * activates when that directory actually exists, so local `pnpm dev` behaves exactly as before
+ * without anyone needing to build the web app first.
+ *
+ * Expo's static export produces one real HTML file per route (e.g. training/history.html), but
+ * dynamic routes still need client-side Expo Router to resolve the actual path (there's no static
+ * file for /training/session/<id>). The fallback chain below tries an exact match first, then
+ * falls back to the root shell and lets the client-side router take over.
+ */
+async function registerWebApp(app: FastifyInstance): Promise<void> {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const webRoot = path.join(currentDir, '../public');
+  if (!fs.existsSync(webRoot)) return;
+
+  await app.register(fastifyStatic, { root: webRoot, wildcard: false });
+
+  app.setNotFoundHandler((request, reply) => {
+    if (request.url.startsWith('/api/')) {
+      return reply.code(404).send({ statusCode: 404, error: 'Not Found', message: `Route ${request.url} not found` });
+    }
+
+    const routePath = request.url.split('?')[0] ?? '/';
+    for (const candidate of [`${routePath}.html`, `${routePath}/index.html`, '/index.html']) {
+      if (fs.existsSync(path.join(webRoot, candidate))) {
+        return reply.sendFile(candidate);
+      }
+    }
+    return reply.code(404).send('Not found');
+  });
 }

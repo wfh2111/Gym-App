@@ -1,0 +1,17 @@
+node_modules
+.pnpm-store
+**/node_modules
+
+**/dist
+**/public
+apps/mobile/.expo
+apps/mobile/web-build
+
+.git
+.env
+.env.local
+**/.env
+**/.env.local
+
+*.log
+.DS_Store
