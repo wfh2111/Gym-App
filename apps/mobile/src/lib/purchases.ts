@@ -9,6 +9,7 @@ import { api } from './api';
 
 const IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
 const ANDROID_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '';
+const BILLING_MODE = process.env.EXPO_PUBLIC_BILLING_MODE ?? 'sandbox';
 
 function platformApiKey(): string {
   if (Platform.OS === 'ios') return IOS_KEY;
@@ -17,13 +18,15 @@ function platformApiKey(): string {
 }
 
 /**
- * True whenever no RevenueCat project key is configured for this platform - the default in this
- * build, since it has no real App Store/Play Store products to sell against. The paywall still
- * works end-to-end in this mode: "purchasing" calls the backend's mock sync endpoint directly
- * instead of going through StoreKit/Play Billing, so the premium experience is fully testable
- * without a real RevenueCat account.
+ * True unless EXPO_PUBLIC_BILLING_MODE is explicitly "live" AND a RevenueCat project key is
+ * configured for this platform - the default in this build, since it has no real App
+ * Store/Play Store products to sell against. The paywall still works end-to-end in this mode:
+ * "purchasing" calls the backend's mock sync endpoint directly instead of going through
+ * StoreKit/Play Billing, so the premium experience is fully testable without a real RevenueCat
+ * account. Falling back to mock mode when "live" is set but no key is present avoids configuring
+ * the SDK with an empty apiKey.
  */
-export const isMockMode = platformApiKey().length === 0;
+export const isMockMode = BILLING_MODE !== 'live' || platformApiKey().length === 0;
 
 export async function configurePurchases(userId: string): Promise<void> {
   if (isMockMode) return;
